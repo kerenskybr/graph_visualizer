@@ -13,7 +13,7 @@ matplotlib.use('Qt5Agg')
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.backends.backend_qt5agg import NavigationToolbar2QT as NavigationToolbar
 from matplotlib.figure import Figure
-
+import subprocess
 
 class Color(QtWidgets.QWidget):
     # Coloring class
@@ -36,6 +36,9 @@ class MplCanvas(FigureCanvas):
         self.axes = fig.add_subplot(111)
         super(MplCanvas, self).__init__(fig)
 
+    def __del__(self):
+        print("Graph deleted")
+
 
 class Window(QtWidgets.QMainWindow):
     """ Main window class
@@ -47,23 +50,18 @@ class Window(QtWidgets.QMainWindow):
         self.setWindowTitle("My App")
         self.setGeometry(0, 0, 1280, 768)
         self.setWindowTitle("Some app")
-        self.canvas = MplCanvas(self, width=9, height=5, dpi=100)
-        
+       
+        self.invert_x = False
         self.cols_qnt = None
         self.data = None
         self.cols_names = None
         self.x_y_names = None
 
-        layout1 = QtWidgets.QHBoxLayout()
+        self.layout1 = QtWidgets.QHBoxLayout()
         self.layout2 = QtWidgets.QVBoxLayout()
         #layout3 = QtWidgets.QHBoxLayout()
         
-        # layout with the graph
-        self.layout2.addWidget(self.canvas)
-
-        # Layout with graph options
-        mlp_toolbar = NavigationToolbar( self.canvas, self)
-        self.layout2.addWidget(mlp_toolbar)#Color('gray'))  
+        self.graph_layout()
 
         self.model = QtGui.QStandardItemModel(self)
 
@@ -71,53 +69,108 @@ class Window(QtWidgets.QMainWindow):
         self.tableView.setModel(self.model)
         self.tableView.horizontalHeader().setStretchLastSection(True)
 
-        layout1.addLayout(self.layout2)
+        self.layout1.addLayout(self.layout2)
 
         # layout with data (the table)
-        layout1.addWidget(self.tableView)
-        
-        #self.layout2.addWidget(self.checkBox_d)
-        #layout3.addWidget(self.tableView2)
-        
+        self.layout1.addWidget(self.tableView)
+
         widget = QtWidgets.QWidget()
-        widget.setLayout(layout1)
+        widget.setLayout(self.layout1)
         self.setCentralWidget(widget)
         
         self.menu_bar()
 
+        # Calling here cause the graph need to exist before change theme
+        self.theme_options()
+
+    def graph_layout(self):
+        # layout with the graph
+        self.canvas = MplCanvas(self, width=9, height=5, dpi=100)
+        self.layout2.addWidget(self.canvas)
+
+        # Layout with graph options
+        self.mlp_toolbar = NavigationToolbar(self.canvas, self)
+        self.layout2.addWidget(self.mlp_toolbar)#Color('gray')) 
+
     def check_buttons(self):
-        label = QtWidgets.QLabel(self)
-        label.setText("Columns Available")
-        self.layout2.addWidget(label)
-        for j in range(self.cols_qnt):
+        # label = QtWidgets.QLabel(self)
+        # label.setText("Columns Available")
+        # self.layout2.addWidget(label)
+
+        #self.process_wavelet = QtWidgets.QPushButton("Process")
+
+        self.grid = QtWidgets.QGridLayout()
+        self.grid.setColumnStretch(4, 4)
+        self.horizontalGroupBox = QtWidgets.QGroupBox("Columns Available")
+
+        for col in range(self.cols_qnt):
             # Get name of column each iteration and display with a check box
-            self.j = QtWidgets.QCheckBox(self.x_y_names[j], parent=self.tableView)
-            self.j.setGeometry(QtCore.QRect(5, 5, 50, 50))
-            self.layout2.addWidget(self.j)
-            self.j.setCheckable(True)
+            self.col = QtWidgets.QCheckBox(self.x_y_names[col], parent=self.tableView)
+            self.col.setGeometry(QtCore.QRect(5, 5, 10, 10))
+            #self.layout2.addWidget(self.col)
+            self.grid.addWidget(self.col)
+            self.col.setCheckable(True)
+            #self.layout2.addWidget(self.process_wavelet, j)
+
+        self.horizontalGroupBox.setLayout(self.grid)
+        # Add the grid to layout
+        self.layout2.addWidget(self.horizontalGroupBox)
 
         self.update_button = QtWidgets.QPushButton("Update Graph")
         self.update_button.clicked.connect(self._update)
         self.layout2.addWidget(self.update_button)
-    
+
+        self.clean_button = QtWidgets.QPushButton("Clean Graph")
+        self.clean_button.clicked.connect(self._clean)
+        self.layout2.addWidget(self.clean_button)
+
+        self.invert_button = QtWidgets.QPushButton("Invert X/Y")
+        self.invert_button.clicked.connect(self._invert)
+        self.layout2.addWidget(self.invert_button)
+
+    def _invert(self):
+        """ Invert x and y
+        """
+        if self.invert_x:
+            self.invert_x = False
+        else:
+            self.invert_x = True
+        print(self.invert_x)
+
+    def _clean(self):
+        self.canvas.axes.clear()
+        self.canvas.draw()
+
     def _update(self):
-    
-        print("Click'n")
+        """ The update button in the interface
+            Updates the graph with x/y selected
+        """
         self.checked_items = []
-        for i in range(4, self.layout2.count()):
-            ch_box = self.layout2.itemAt(i).widget()
-            #print(i)
-            #print(self.j.checkState())
-            # if self.j.checkState() == QtCore.Qt.Checked:
-            if ch_box.isChecked():
+        # starting at 3, skipping previous widgets.
+        # Checkbox widget starts from 3
+        for i in range(self.grid.count()):
+            self.ch_box = self.grid.itemAt(i).widget()
+            if self.ch_box.isChecked():
+                print("check", self.ch_box.text())
+                self.checked_items.append(self.ch_box.text())
 
-                print("check", ch_box.text())
-                #self.j.setChecked(True)
-                self.checked_items.append(i)
+        self.display_graph()
 
-        print("TEst", ch_box.text())
+    # def _update(self):
+    #     """ The update button in the interface
+    #         Updates the graph with x/y selected
+    #     """
+    #     self.checked_items = []
+    #     # starting at 3, skipping previous widgets.
+    #     # Checkbox widget starts from 3
+    #     for i in range(3, self.layout2.count()):
+    #         self.ch_box = self.layout2.itemAt(i).widget()
+    #         if self.ch_box.isChecked():
+    #             print("check", self.ch_box.text())
+    #             self.checked_items.append(self.ch_box.text())
 
-        
+    #     self.display_graph()
+
     def load_csv(self):
         """Read the csv file from disk and display
         """
@@ -126,7 +179,7 @@ class Window(QtWidgets.QMainWindow):
         # Fail fast
         if self.file_name == ('', ''):
             return
-
+        
         self.data = pd.read_csv(self.file_name[0]) 
 
         self._load_info()
@@ -140,7 +193,11 @@ class Window(QtWidgets.QMainWindow):
                 self.model.appendRow(items)
 
         self.check_buttons()
-        self.display_graph()
+        #self.display_graph()
+
+    # def restart(self):
+    #     self.close()
+    #     subprocess.call("python" + "py_by.py  ", shell=True)
 
     def _load_info(self):
         # Name of columns
@@ -157,16 +214,15 @@ class Window(QtWidgets.QMainWindow):
         self.data = self.data.sample(n=50)
     
     def display_graph(self):
-        #cols = [self.cols_names[i] for i in range(self.cols_qnt)]
-        #a_list = [self.data[str(i)] for i in cols]
-        #print(a_list)
-        self.canvas.stop_event_loop()
-        #self.canvas = MplCanvas(self, width=9, height=5, dpi=100)
-        # Getting the column names to display in the graph (need to make it iterable)
-        self.canvas.axes.plot(self.data[self.x_y_names[0]], self.data[self.x_y_names[1]])
-        self.canvas.axes.set_xlabel(self.x_y_names[0])
-        self.canvas.axes.set_xticklabels(self.data[self.x_y_names[0]], rotation=90,)
-        self.canvas.axes.set_ylabel(self.x_y_names[1])
+        
+        x = 0 if self.invert_x else 1
+        y = 1 if self.invert_x else 0
+
+        self.canvas.axes.plot(self.data[self.checked_items[x]], self.data[self.checked_items[y]])
+        
+        self.canvas.axes.set_xlabel(self.checked_items[x])
+        self.canvas.axes.set_xticklabels(self.data[self.checked_items[x]], rotation=90,)
+        self.canvas.axes.set_ylabel(self.checked_items[y])
         
         self.canvas.draw()
         self.canvas.flush_events()
@@ -181,6 +237,20 @@ class Window(QtWidgets.QMainWindow):
         img = np.array(self.canvas.buffer_rgba())
         img = Image.fromarray(img)
         img.save(file_name[0] + '.png')
+
+    def theme_options(self):
+        """Show a combo box with theme options
+        """
+        self.cb = QtWidgets.QComboBox()
+        self.cb.addItems(matplotlib.style.available)
+        self.toolBar.addWidget(self.cb)
+        self.cb.currentIndexChanged.connect(self.selectionchange)
+
+    def selectionchange(self,i):            
+        print("Theme selected: ", self.cb.currentText())
+        matplotlib.style.use(self.cb.currentText())
+        self.canvas.draw()
+        self.canvas.flush_events()
 
     def menu_bar(self):
         # Menu bar items
@@ -218,7 +288,7 @@ class Window(QtWidgets.QMainWindow):
         self.toolBar.addAction(open_action)
         self.toolBar.addAction(save_action)
         self.toolBar.addAction(quit_action)
-
+        
     def close_aplication(self):
         choice = QtWidgets.QMessageBox.question(self, 
             "Exit Aplication?", 
@@ -227,6 +297,7 @@ class Window(QtWidgets.QMainWindow):
 
         if choice == QtWidgets.QMessageBox.Yes:
             sys.exit()
+
 
 if __name__ == "__main__":
     app = QtWidgets.QApplication(sys.argv)
