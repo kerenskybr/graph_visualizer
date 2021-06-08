@@ -1,4 +1,5 @@
 import csv
+from os import error
 import sys
 
 import matplotlib
@@ -13,7 +14,8 @@ matplotlib.use('Qt5Agg')
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.backends.backend_qt5agg import NavigationToolbar2QT as NavigationToolbar
 from matplotlib.figure import Figure
-import subprocess
+from collections import defaultdict
+
 
 class Color(QtWidgets.QWidget):
     # Coloring class
@@ -73,9 +75,8 @@ class Window(QtWidgets.QMainWindow):
         widget = QtWidgets.QWidget()
         widget.setLayout(self.layout1)
         self.setCentralWidget(widget)
-        
+    
         self.menu_bar()
-
         # Calling here cause the graph need to exist before change theme
         self.theme_options()
 
@@ -87,6 +88,8 @@ class Window(QtWidgets.QMainWindow):
         # Layout with graph options
         self.mlp_toolbar = NavigationToolbar(self.canvas, self)
         self.layout2.addWidget(self.mlp_toolbar)#Color('gray')) 
+
+        
 
     def check_buttons(self):
         # label = QtWidgets.QLabel(self)
@@ -102,11 +105,17 @@ class Window(QtWidgets.QMainWindow):
         for col in range(self.cols_qnt):
             # Get name of column each iteration and display with a check box
             self.col = QtWidgets.QCheckBox(self.x_y_names[col], parent=self.tableView)
-            self.col.setGeometry(QtCore.QRect(5, 5, 10, 10))
+            self.col.setGeometry(QtCore.QRect(5, 5, 5, 5))
             #self.layout2.addWidget(self.col)
             self.grid.addWidget(self.col)
             self.col.setCheckable(True)
             #self.layout2.addWidget(self.process_wavelet, j)
+            self.rbtn1 = QtWidgets.QRadioButton('Make it X axis')
+            self.rbtn1.toggled.connect(self.swap_x)
+      
+            #save_icon = qta.icon("fa5s.file-image")
+            # button = QtWidgets.QPushButton('X', self)
+            self.grid.addWidget(self.rbtn1)
 
         self.horizontalGroupBox.setLayout(self.grid)
         # Add the grid to layout
@@ -123,6 +132,8 @@ class Window(QtWidgets.QMainWindow):
         self.invert_button = QtWidgets.QPushButton("Invert X/Y")
         self.invert_button.clicked.connect(self._invert)
         self.layout2.addWidget(self.invert_button)
+
+
 
     def _invert(self):
         """ Invert x and y
@@ -161,7 +172,8 @@ class Window(QtWidgets.QMainWindow):
         if self.file_name == ('', ''):
             return
         
-        self.data = pd.read_csv(self.file_name[0]) 
+        self.data = pd.read_csv(self.file_name[0])
+        
 
         self._load_info()
         
@@ -174,39 +186,68 @@ class Window(QtWidgets.QMainWindow):
                 self.model.appendRow(items)
 
         self.check_buttons()
-        #self.display_graph()
-
-    # def restart(self):
-    #     self.close()
-    #     subprocess.call("python" + "py_by.py  ", shell=True)
-
+ 
     def _load_info(self):
         # Name of columns
         self.x_y_names = list(self.data.columns.values)
-        print(self.x_y_names)
+        print("Column names",self.x_y_names)
 
         self.cols_qnt = (len(self.data.columns))
-        # #self.data = pd.read_csv(self.file_name[0], names=['col1', 'col2'], header=0)
-        self.cols_names = ['col'.join(str(i)) for i in range(self.cols_qnt)]
-        #print(self.cols_names)
-        print(">>> ", self.cols_names)
 
         self.data = pd.read_csv(self.file_name[0], names=self.x_y_names, header=0) 
-        self.data = self.data.sample(n=50)
+        self.data = self.data.sample(n=60)
     
     def display_graph(self):
         
-        x = 0 if self.invert_x else 1
-        y = 1 if self.invert_x else 0
+        # x = 0 if self.invert_x else 1
+        # y = 1 if self.invert_x else 0
 
-        self.canvas.axes.plot(self.data[self.checked_items[x]], self.data[self.checked_items[y]],)
+        print("Checked items: ", self.checked_items)
+
+        compare = defaultdict(list)
+
+        # Getting indexes of selected columns
+        for index, item in enumerate(self.x_y_names):
+            compare[item].append(index)
+
+        selected_axis = [index for item in self.checked_items for index in compare[item] if item in compare]
+
+        # Inverting the list
+        #selected_axis = selected_axis.reverse() if self.invert_x else selected_axis
+        if self.invert_x:
+            selected_axis.reverse()
         
-        self.canvas.axes.set_xlabel(self.checked_items[x])
-        self.canvas.axes.set_xticklabels(self.data[self.checked_items[x]], rotation=90,)
-        self.canvas.axes.set_ylabel(self.checked_items[y])
+        error_dialog = QtWidgets.QMessageBox()
+        error_dialog.setIcon(QtWidgets.QMessageBox.Warning)
+        error_dialog.setText("Warning")
+        error_dialog.setInformativeText("Select two columns at least!")
+        error_dialog.setWindowTitle("Warning")
         
+        if len(selected_axis) < 2:
+            error_dialog.exec_()
+            return
+
+        print("selected indexes",selected_axis)
+        
+        canvas_labels = []
+        self.data = self.data.sort_index()
+        for i in selected_axis[1:]:
+            print('i', i)
+            self.canvas.axes.plot(self.data[self.x_y_names[selected_axis[0]]], self.data[self.x_y_names[i]], )
+            canvas_labels.append(self.x_y_names[i])
+        
+        self.canvas.axes.set_ylabel(canvas_labels)
+
+        print("THIS", selected_axis[0])
+        self.canvas.axes.set_xlabel(self.x_y_names[selected_axis[0]])
+        self.canvas.axes.set_xticklabels(self.data[self.x_y_names[selected_axis[0]]], rotation=90,)
         self.canvas.draw()
         self.canvas.flush_events()
+
+    def swap_x(self):
+        radioBtn = self.sender()
+        if radioBtn.isChecked():
+            print("Swap x")
 
     def _save_as_png(self):
         file_name = QtWidgets.QFileDialog.getSaveFileName(self, 'Save File')
@@ -282,9 +323,6 @@ class Window(QtWidgets.QMainWindow):
 
 if __name__ == "__main__":
     app = QtWidgets.QApplication(sys.argv)
-    #gui = Window()
-    # Temporary
-    #gui.show()
     w = Window()
     w.show()
     sys.exit(app.exec_())
