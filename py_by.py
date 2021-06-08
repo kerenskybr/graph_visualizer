@@ -32,12 +32,8 @@ class MplCanvas(FigureCanvas):
         fig = Figure(figsize=(width, height), dpi=dpi)
         fig.subplots_adjust(bottom=0.2)
         fig.set_tight_layout(True)
-        #fig.autofmt_xdate(bottom=0.2, rotation=30, ha='right')
         self.axes = fig.add_subplot(111)
         super(MplCanvas, self).__init__(fig)
-
-    def __del__(self):
-        print("Graph deleted")
 
 
 class Window(QtWidgets.QMainWindow):
@@ -156,21 +152,6 @@ class Window(QtWidgets.QMainWindow):
 
         self.display_graph()
 
-    # def _update(self):
-    #     """ The update button in the interface
-    #         Updates the graph with x/y selected
-    #     """
-    #     self.checked_items = []
-    #     # starting at 3, skipping previous widgets.
-    #     # Checkbox widget starts from 3
-    #     for i in range(3, self.layout2.count()):
-    #         self.ch_box = self.layout2.itemAt(i).widget()
-    #         if self.ch_box.isChecked():
-    #             print("check", self.ch_box.text())
-    #             self.checked_items.append(self.ch_box.text())
-
-    #     self.display_graph()
-
     def load_csv(self):
         """Read the csv file from disk and display
         """
@@ -218,7 +199,7 @@ class Window(QtWidgets.QMainWindow):
         x = 0 if self.invert_x else 1
         y = 1 if self.invert_x else 0
 
-        self.canvas.axes.plot(self.data[self.checked_items[x]], self.data[self.checked_items[y]])
+        self.canvas.axes.plot(self.data[self.checked_items[x]], self.data[self.checked_items[y]],)
         
         self.canvas.axes.set_xlabel(self.checked_items[x])
         self.canvas.axes.set_xticklabels(self.data[self.checked_items[x]], rotation=90,)
