@@ -165,12 +165,12 @@ class Window(QtWidgets.QMainWindow):
         self._clean()
         self._update()
 
-
     def _plot_scatter(self):
         self.plot_curve = False
         self.plot_bar = False
         self.plot_scatter = True
-
+        self._clean()
+        self._update()
 
     def _sort_data(self):
         self.data.sort_index(axis=0, inplace=True)
@@ -299,6 +299,11 @@ class Window(QtWidgets.QMainWindow):
                 self.canvas.axes.plot(self.data[original_axis[x_axis]], self.data[self.x_y_names[i]],label=self.x_y_names[i])
             if self.plot_bar:
                 self.canvas.axes.bar(self.data[original_axis[x_axis]], self.data[self.x_y_names[i]],label=self.x_y_names[i])
+            if self.plot_scatter:
+                self.canvas.axes.scatter(self.data[original_axis[x_axis]], self.data[self.x_y_names[i]],label=self.x_y_names[i])
+                self.canvas.axes.set_yticklabels(self.data[self.x_y_names[i]], fontsize=8)
+
+
 
             canvas_labels.append(self.x_y_names[i])
         
@@ -307,7 +312,7 @@ class Window(QtWidgets.QMainWindow):
         self.canvas.axes.legend()
         self.canvas.axes.set_xlabel(original_axis[x_axis])
         self.canvas.axes.set_xticklabels(self.data[original_axis[x_axis]], fontsize=8, rotation=45,)
-        self.canvas.axes.set_yticklabels(canvas_labels, fontsize=8)
+        #self.canvas.axes.set_yticklabels(canvas_labels, fontsize=8)
         self.canvas.draw()
         self.canvas.flush_events()
 
@@ -331,16 +336,24 @@ class Window(QtWidgets.QMainWindow):
     def theme_options(self):
         """Show a combo box with theme options
         """
+        toolButton = QtWidgets.QToolButton()
+        toolButton.setText("Theme Options: ")
+        toolButton.setCheckable(False)
+
+       
+
         self.cb = QtWidgets.QComboBox()
         self.cb.addItems(matplotlib.style.available)
+        self.toolBar.addSeparator()
+        self.toolBar.addWidget(toolButton)
         self.toolBar.addWidget(self.cb)
         self.cb.currentIndexChanged.connect(self.selectionchange)
 
     def selectionchange(self,i):            
         # print("Theme selected: ", self.cb.currentText())
         matplotlib.style.use(self.cb.currentText())
-        self.canvas.draw()
-        self.canvas.flush_events()
+        # self.canvas.draw()
+        # self.canvas.flush_events()
 
     def menu_bar(self):
         # Menu bar items
