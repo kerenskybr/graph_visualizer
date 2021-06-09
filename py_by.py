@@ -48,12 +48,15 @@ class Window(QtWidgets.QMainWindow):
         self.setWindowTitle("My App")
         self.setGeometry(0, 0, 1280, 768)
         
-       
         self.invert_x = False
         self.cols_qnt = None
         self.data = None
         self.cols_names = None
         self.x_y_names = None
+
+        self.plot_curve = True
+        self.plot_bar = False
+        self.plot_scatter = False
 
         self.layout1 = QtWidgets.QHBoxLayout()
         self.layout2 = QtWidgets.QVBoxLayout()
@@ -89,13 +92,7 @@ class Window(QtWidgets.QMainWindow):
         self.mlp_toolbar = NavigationToolbar(self.canvas, self)
         self.layout2.addWidget(self.mlp_toolbar)#Color('gray')) 
 
-    
     def check_buttons(self):
-        # label = QtWidgets.QLabel(self)
-        # label.setText("Columns Available")
-        # self.layout2.addWidget(label)
-
-        #self.process_wavelet = QtWidgets.QPushButton("Process")
 
         self.grid = QtWidgets.QGridLayout()
         self.grid.setColumnStretch(4, 4)
@@ -105,43 +102,89 @@ class Window(QtWidgets.QMainWindow):
             # Get name of column each iteration and display with a check box
             self.col = QtWidgets.QCheckBox(self.x_y_names[col], parent=self.tableView)
             self.col.setGeometry(QtCore.QRect(5, 5, 5, 5))
-            #self.layout2.addWidget(self.col)
+           
             self.grid.addWidget(self.col)
             self.col.setCheckable(True)
-            #self.layout2.addWidget(self.process_wavelet, j)
+        
             self.rbtn1 = QtWidgets.QRadioButton('Make it X axis')
             self.rbtn1.toggled.connect(self.swap_x)
-      
-            #save_icon = qta.icon("fa5s.file-image")
-            # button = QtWidgets.QPushButton('X', self)
             self.grid.addWidget(self.rbtn1)
-            # self.plot_splitter = QtWidgets.QSplitter(QtCore.Qt.Vertical)
-            # self.grid.addWidget(self.plot_splitter)
+
         
+        # Add the grid to layout with it's label
         self.horizontalGroupBox.setLayout(self.grid)
-        # Add the grid to layout
         self.layout2.addWidget(self.horizontalGroupBox)
 
+        # Group for Update / Clean / Sort buttons
+        self.layout_btn = QtWidgets.QHBoxLayout(self)
+
+        # Group for kind of plot (bar, curve, etc)
+        self.layout_btn2 = QtWidgets.QHBoxLayout(self)
+
+        self.plot_curve = QtWidgets.QPushButton("Plot Curve")
+        self.plot_curve.clicked.connect(self._plot_curve)
+        self.layout_btn2.addWidget(self.plot_curve)
+
+        self.plot_bar = QtWidgets.QPushButton("Plot Bar")
+        self.plot_bar.clicked.connect(self._plot_bar)
+        self.layout_btn2.addWidget(self.plot_bar)
+
+        self.plot_scatter = QtWidgets.QPushButton("Plot Scatter")
+        self.plot_scatter.clicked.connect(self._plot_scatter)
+        self.layout_btn2.addWidget(self.plot_scatter)
+
+        # Update / Clean / Sort buttons
         self.update_button = QtWidgets.QPushButton("Update Graph")
         self.update_button.clicked.connect(self._update)
-        self.layout2.addWidget(self.update_button)
+        self.layout_btn.addWidget(self.update_button)
 
         self.clean_button = QtWidgets.QPushButton("Clean Graph")
         self.clean_button.clicked.connect(self._clean)
-        self.layout2.addWidget(self.clean_button)
+        self.layout_btn.addWidget(self.clean_button)
 
-        # self.invert_button = QtWidgets.QPushButton("Invert X/Y")
-        # self.invert_button.clicked.connect(self._invert)
-        # self.layout2.addWidget(self.invert_button)
+        self.invert_button = QtWidgets.QPushButton("Sort Data")
+        self.invert_button.clicked.connect(self._sort_data)
+        self.layout_btn.addWidget(self.invert_button)
 
-    def _invert(self):
-        """ Invert x and y
-        """
-        if self.invert_x:
-            self.invert_x = False
-        else:
-            self.invert_x = True
-        # print(self.invert_x)
+        # Adding group buttons to layout
+        self.layout2.addLayout(self.layout_btn)
+        self.layout2.addLayout(self.layout_btn2)
+
+    def _plot_curve(self):
+        self.plot_curve = True
+        self.plot_bar = False
+        self.plot_scatter = False
+        
+        self._clean()
+        self._update()
+
+    def _plot_bar(self):
+        self.plot_curve = False
+        self.plot_bar = True
+        self.plot_scatter = False
+        self._clean()
+        self._update()
+
+
+    def _plot_scatter(self):
+        self.plot_curve = False
+        self.plot_bar = False
+        self.plot_scatter = True
+
+
+    def _sort_data(self):
+        self.data.sort_index(axis=0, inplace=True)
+        self._clean()
+        self._update()
+
+    # def _invert(self):
+    #     """ Invert x and y
+    #     """
+    #     if self.invert_x:
+    #         self.invert_x = False
+    #     else:
+    #         self.invert_x = True
+    #     # print(self.invert_x)
 
     def _clean(self):
         self.canvas.axes.clear()
@@ -151,13 +194,13 @@ class Window(QtWidgets.QMainWindow):
         """ The update button in the interface
             Updates the graph with x/y selected
         """
+        self._clean()
         self.checked_items = []
-        # starting at 3, skipping previous widgets.
-        # Checkbox widget starts from 3
+        
+        # Getting the checkboxes
         for i in range(self.grid.count()):
             self.ch_box = self.grid.itemAt(i).widget()
             if self.ch_box.isChecked():
-                # print("check", self.ch_box.text())
                 self.checked_items.append(self.ch_box.text())
 
         self.display_graph()
@@ -196,7 +239,19 @@ class Window(QtWidgets.QMainWindow):
         self.data = self.data.sample(n=60)
     
     def display_graph(self):
-        
+
+        # Showing error dialog if the user choose less than 2 columnns
+        error_dialog = QtWidgets.QMessageBox()
+        error_dialog.setIcon(QtWidgets.QMessageBox.Warning)
+        error_dialog.setText("Warning")
+        error_dialog.setInformativeText("Select two columns at least!")
+        error_dialog.setWindowTitle("Warning")
+
+        error_not_x = QtWidgets.QMessageBox()
+        error_not_x.setIcon(QtWidgets.QMessageBox.Warning)
+        error_not_x.setText("Warning")
+        error_not_x.setInformativeText("Select the X!")
+        error_not_x.setWindowTitle("Warning")
         # x = 0 if self.invert_x else 1
         # y = 1 if self.invert_x else 0
 
@@ -208,6 +263,10 @@ class Window(QtWidgets.QMainWindow):
                 # print("X index", i)
                 x_axis = i - 1
 
+        # If user doesnt select a x axis
+        if x_axis == None:
+            error_not_x.exec_()
+            return
 
         compare = defaultdict(list)
 
@@ -221,14 +280,7 @@ class Window(QtWidgets.QMainWindow):
         #selected_axis = selected_axis.reverse() if self.invert_x else selected_axis
         # if self.invert_x:
         #     selected_axis.reverse()
-        
-        # Showing error dialog if the user choose less than 2 columnns
-        error_dialog = QtWidgets.QMessageBox()
-        error_dialog.setIcon(QtWidgets.QMessageBox.Warning)
-        error_dialog.setText("Warning")
-        error_dialog.setInformativeText("Select two columns at least!")
-        error_dialog.setWindowTitle("Warning")
-        
+         
         if len(selected_axis) < 2:
             error_dialog.exec_()
             return
@@ -237,27 +289,25 @@ class Window(QtWidgets.QMainWindow):
         original_axis = self.checked_items
         original_axis.remove('Make it X axis')
         
+        # Removing the X from the list to use it. 
+        # Remaining will be Y
         selected_axis.pop(x_axis)
-        # print("selected indexes",selected_axis[x_axis])
-        print("X_Y NAMES", self.x_y_names)
         canvas_labels = []
-
-        print("ORIGINAL", original_axis)
-        print("--", original_axis[x_axis], x_axis)
-
-        #self.data = self.data.sort_index()
+        
         for i in selected_axis:
-            # print('i', i)
-            # self.canvas.axes.plot(self.data[original_axis[x_axis]], self.data[self.x_y_names[i]], )
-            self.canvas.axes.plot(self.data[original_axis[x_axis]], self.data[self.x_y_names[i]],)
+            if self.plot_curve:
+                self.canvas.axes.plot(self.data[original_axis[x_axis]], self.data[self.x_y_names[i]],label=self.x_y_names[i])
+            if self.plot_bar:
+                self.canvas.axes.bar(self.data[original_axis[x_axis]], self.data[self.x_y_names[i]],label=self.x_y_names[i])
 
             canvas_labels.append(self.x_y_names[i])
         
         #for i in canvas_labels:
         self.canvas.axes.set_ylabel(canvas_labels)
-
+        self.canvas.axes.legend()
         self.canvas.axes.set_xlabel(original_axis[x_axis])
-        self.canvas.axes.set_xticklabels(self.data[original_axis[x_axis]], rotation=90,)
+        self.canvas.axes.set_xticklabels(self.data[original_axis[x_axis]], fontsize=8, rotation=45,)
+        self.canvas.axes.set_yticklabels(canvas_labels, fontsize=8)
         self.canvas.draw()
         self.canvas.flush_events()
 
