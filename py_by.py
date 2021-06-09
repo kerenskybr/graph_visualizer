@@ -30,7 +30,7 @@ class Color(QtWidgets.QWidget):
 
 class MplCanvas(FigureCanvas):
     # matplotlib canvas stuff
-    def __init__(self, parent=None, width=5, height=4, dpi=100):
+    def __init__(self, parent=None, width=9, height=5, dpi=150):
         fig = Figure(figsize=(width, height), dpi=dpi)
         fig.subplots_adjust(bottom=0.2)
         fig.set_tight_layout(True)
@@ -46,7 +46,7 @@ class Window(QtWidgets.QMainWindow):
         super(Window, self).__init__(parent)
 
         self.setWindowTitle("My App")
-        self.setGeometry(0, 0, 1280, 768)
+        self.setGeometry(0, 0, 1500, 768)
         
         self.invert_x = False
         self.cols_qnt = None
@@ -85,7 +85,7 @@ class Window(QtWidgets.QMainWindow):
 
     def graph_layout(self):
         # layout with the graph
-        self.canvas = MplCanvas(self, width=9, height=5, dpi=100)
+        self.canvas = MplCanvas(self, width=9, height=5, dpi=120)
         self.layout2.addWidget(self.canvas)
 
         # Layout with graph options
@@ -295,14 +295,16 @@ class Window(QtWidgets.QMainWindow):
         canvas_labels = []
         
         for i in selected_axis:
+         
             if self.plot_curve:
                 self.canvas.axes.plot(self.data[original_axis[x_axis]], self.data[self.x_y_names[i]],label=self.x_y_names[i])
             if self.plot_bar:
                 self.canvas.axes.bar(self.data[original_axis[x_axis]], self.data[self.x_y_names[i]],label=self.x_y_names[i])
             if self.plot_scatter:
-                self.canvas.axes.scatter(self.data[original_axis[x_axis]], self.data[self.x_y_names[i]],label=self.x_y_names[i])
-                self.canvas.axes.set_yticklabels(self.data[self.x_y_names[i]], fontsize=8)
-
+                self.canvas.axes.scatter( self.data[original_axis[x_axis]], self.data[self.x_y_names[i]],label=self.x_y_names[i])
+            
+            self.canvas.axes.set_yticklabels(self.data[self.x_y_names[i]], fontsize=8)
+   
 
 
             canvas_labels.append(self.x_y_names[i])
@@ -311,7 +313,7 @@ class Window(QtWidgets.QMainWindow):
         self.canvas.axes.set_ylabel(canvas_labels)
         self.canvas.axes.legend()
         self.canvas.axes.set_xlabel(original_axis[x_axis])
-        self.canvas.axes.set_xticklabels(self.data[original_axis[x_axis]], fontsize=8, rotation=45,)
+        self.canvas.axes.set_xticklabels(self.data[original_axis[x_axis]], fontsize=7, rotation=45,)
         #self.canvas.axes.set_yticklabels(canvas_labels, fontsize=8)
         self.canvas.draw()
         self.canvas.flush_events()
