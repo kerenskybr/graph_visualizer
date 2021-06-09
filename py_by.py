@@ -47,7 +47,7 @@ class Window(QtWidgets.QMainWindow):
 
         self.setWindowTitle("My App")
         self.setGeometry(0, 0, 1280, 768)
-        self.setWindowTitle("Some app")
+        
        
         self.invert_x = False
         self.cols_qnt = None
@@ -89,8 +89,7 @@ class Window(QtWidgets.QMainWindow):
         self.mlp_toolbar = NavigationToolbar(self.canvas, self)
         self.layout2.addWidget(self.mlp_toolbar)#Color('gray')) 
 
-        
-
+    
     def check_buttons(self):
         # label = QtWidgets.QLabel(self)
         # label.setText("Columns Available")
@@ -116,7 +115,9 @@ class Window(QtWidgets.QMainWindow):
             #save_icon = qta.icon("fa5s.file-image")
             # button = QtWidgets.QPushButton('X', self)
             self.grid.addWidget(self.rbtn1)
-
+            # self.plot_splitter = QtWidgets.QSplitter(QtCore.Qt.Vertical)
+            # self.grid.addWidget(self.plot_splitter)
+        
         self.horizontalGroupBox.setLayout(self.grid)
         # Add the grid to layout
         self.layout2.addWidget(self.horizontalGroupBox)
@@ -129,11 +130,9 @@ class Window(QtWidgets.QMainWindow):
         self.clean_button.clicked.connect(self._clean)
         self.layout2.addWidget(self.clean_button)
 
-        self.invert_button = QtWidgets.QPushButton("Invert X/Y")
-        self.invert_button.clicked.connect(self._invert)
-        self.layout2.addWidget(self.invert_button)
-
-
+        # self.invert_button = QtWidgets.QPushButton("Invert X/Y")
+        # self.invert_button.clicked.connect(self._invert)
+        # self.layout2.addWidget(self.invert_button)
 
     def _invert(self):
         """ Invert x and y
@@ -142,7 +141,7 @@ class Window(QtWidgets.QMainWindow):
             self.invert_x = False
         else:
             self.invert_x = True
-        print(self.invert_x)
+        # print(self.invert_x)
 
     def _clean(self):
         self.canvas.axes.clear()
@@ -158,7 +157,7 @@ class Window(QtWidgets.QMainWindow):
         for i in range(self.grid.count()):
             self.ch_box = self.grid.itemAt(i).widget()
             if self.ch_box.isChecked():
-                print("check", self.ch_box.text())
+                # print("check", self.ch_box.text())
                 self.checked_items.append(self.ch_box.text())
 
         self.display_graph()
@@ -172,9 +171,8 @@ class Window(QtWidgets.QMainWindow):
         if self.file_name == ('', ''):
             return
         
+        self.setWindowTitle(self.file_name[0])
         self.data = pd.read_csv(self.file_name[0])
-        
-
         self._load_info()
         
         with open(self.file_name[0], "r") as file:
@@ -190,7 +188,7 @@ class Window(QtWidgets.QMainWindow):
     def _load_info(self):
         # Name of columns
         self.x_y_names = list(self.data.columns.values)
-        print("Column names",self.x_y_names)
+        # print("Column names",self.x_y_names)
 
         self.cols_qnt = (len(self.data.columns))
 
@@ -203,6 +201,13 @@ class Window(QtWidgets.QMainWindow):
         # y = 1 if self.invert_x else 0
 
         print("Checked items: ", self.checked_items)
+        x_axis = None
+
+        for i, j in enumerate(self.checked_items):
+            if 'Make it X axis' in j:
+                # print("X index", i)
+                x_axis = i - 1
+
 
         compare = defaultdict(list)
 
@@ -214,9 +219,10 @@ class Window(QtWidgets.QMainWindow):
 
         # Inverting the list
         #selected_axis = selected_axis.reverse() if self.invert_x else selected_axis
-        if self.invert_x:
-            selected_axis.reverse()
+        # if self.invert_x:
+        #     selected_axis.reverse()
         
+        # Showing error dialog if the user choose less than 2 columnns
         error_dialog = QtWidgets.QMessageBox()
         error_dialog.setIcon(QtWidgets.QMessageBox.Warning)
         error_dialog.setText("Warning")
@@ -227,27 +233,39 @@ class Window(QtWidgets.QMainWindow):
             error_dialog.exec_()
             return
 
-        print("selected indexes",selected_axis)
+        # print("selected indexes",selected_axis)
+        original_axis = self.checked_items
+        original_axis.remove('Make it X axis')
         
+        selected_axis.pop(x_axis)
+        # print("selected indexes",selected_axis[x_axis])
+        print("X_Y NAMES", self.x_y_names)
         canvas_labels = []
-        self.data = self.data.sort_index()
-        for i in selected_axis[1:]:
-            print('i', i)
-            self.canvas.axes.plot(self.data[self.x_y_names[selected_axis[0]]], self.data[self.x_y_names[i]], )
+
+        print("ORIGINAL", original_axis)
+        print("--", original_axis[x_axis], x_axis)
+
+        #self.data = self.data.sort_index()
+        for i in selected_axis:
+            # print('i', i)
+            # self.canvas.axes.plot(self.data[original_axis[x_axis]], self.data[self.x_y_names[i]], )
+            self.canvas.axes.plot(self.data[original_axis[x_axis]], self.data[self.x_y_names[i]],)
+
             canvas_labels.append(self.x_y_names[i])
         
+        #for i in canvas_labels:
         self.canvas.axes.set_ylabel(canvas_labels)
 
-        print("THIS", selected_axis[0])
-        self.canvas.axes.set_xlabel(self.x_y_names[selected_axis[0]])
-        self.canvas.axes.set_xticklabels(self.data[self.x_y_names[selected_axis[0]]], rotation=90,)
+        self.canvas.axes.set_xlabel(original_axis[x_axis])
+        self.canvas.axes.set_xticklabels(self.data[original_axis[x_axis]], rotation=90,)
         self.canvas.draw()
         self.canvas.flush_events()
 
     def swap_x(self):
         radioBtn = self.sender()
         if radioBtn.isChecked():
-            print("Swap x")
+            # print("Swap x")
+            print()
 
     def _save_as_png(self):
         file_name = QtWidgets.QFileDialog.getSaveFileName(self, 'Save File')
@@ -269,7 +287,7 @@ class Window(QtWidgets.QMainWindow):
         self.cb.currentIndexChanged.connect(self.selectionchange)
 
     def selectionchange(self,i):            
-        print("Theme selected: ", self.cb.currentText())
+        # print("Theme selected: ", self.cb.currentText())
         matplotlib.style.use(self.cb.currentText())
         self.canvas.draw()
         self.canvas.flush_events()
